@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Presensi SPPG</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Menggunakan font Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* Custom scrollbar untuk tabel */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden">
+        <div class="flex flex-col items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-white font-semibold" id="loadingMessage">Memuat data...</p>
+        </div>
+    </div>
+
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+            <i data-lucide="scan-barcode" class="w-8 h-8 mr-3 text-blue-600"></i>
+            Dashboard Presensi RFID Real-time
+        </h1>
+        <p class="text-gray-500 mt-1">Pengawasan Log dan Pendaftaran Pegawai Baru.</p>
+    </header>
+
+    <div id="messageBox" class="p-3 mb-4 rounded-lg hidden" role="alert">
+        <div class="flex items-center">
+            <span id="messageIcon"></span>
+            <span class="ml-3 font-medium" id="messageText"></span>
+        </div>
+    </div>
+
+    <!-- Modul Pendaftaran dan Rekapitulasi -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        
+        <!-- Formulir Pendaftaran Pegawai -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+                <i data-lucide="user-plus" class="w-5 h-5 mr-2 text-green-600"></i>
+                Pendaftaran Pegawai Baru
+            </h2>
+            <form id="registrationForm" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="uid" class="block text-sm font-medium text-gray-700">UID Kartu (Otomatis dari ESP)</label>
+                        <input type="text" id="uid" name="uid" required 
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" 
+                               placeholder="Contoh: 87BD1E34">
+                    </div>
+                    <div>
+                        <label for="nama" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                        <input type="text" id="nama" name="nama" required 
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" 
+                               placeholder="Masukkan Nama Pegawai">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="divisi" class="block text-sm font-medium text-gray-700">Divisi / Departemen</label>
+                    <input type="text" id="divisi" name="divisi" required 
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" 
+                           placeholder="Contoh: IT Support">
+                </div>
+
+                <button type="submit" id="registerButton" 
+                        class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                    <i data-lucide="save" class="w-4 h-4 mr-2"></i>
+                    Daftarkan Pegawai
+                </button>
+            </form>
+        </div>
+        
+        <!-- Kartu Rekapitulasi dan Aksi -->
+        <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col justify-between">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+                    <i data-lucide="calculator" class="w-5 h-5 mr-2 text-blue-600"></i>
+                    Perhitungan Data
+                </h2>
+                <p class="text-gray-600 mb-4">
+                    Hitung total jam kerja harian dari semua entri presensi. Hasil akan disimpan di sheet "Rekapitulasi Harian".
+                </p>
+            </div>
+            <button onclick="triggerRecapitulasi()" id="recapButton" 
+                    class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg shadow-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out hover:shadow-xl">
+                <i data-lucide="clock" class="w-4 h-4 mr-2"></i>
+                Hitung Total Jam Kerja
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modul Log Presensi Real-time -->
+    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+            <i data-lucide="activity" class="w-5 h-5 mr-2 text-red-600"></i>
+            Log Presensi Terbaru (Real-time)
+        </h2>
+        
+        <div class="overflow-x-auto table-container">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50 sticky top-0">
+                    <tr>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Pegawai</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Divisi</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UID Kartu</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Transaksi</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Koreksi</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Data akan diisi oleh JavaScript -->
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-gray-500">Memuat data log presensi...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="text-center mt-4">
+            <button onclick="fetchData()" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center mx-auto">
+                <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i>
+                Muat Ulang Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Koreksi Waktu -->
+    <div id="correctionModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                <i data-lucide="edit-3" class="w-5 h-5 mr-2 text-red-600"></i>
+                Koreksi Waktu Presensi
+            </h3>
+            <p class="text-sm text-gray-600 mb-4">
+                Anda mengoreksi waktu untuk ID Transaksi: <span id="modalTransactionId" class="font-bold"></span>
+            </p>
+            <form id="correctionForm" class="space-y-4">
+                <input type="hidden" id="correctionId">
+                <div>
+                    <label for="correctedTime" class="block text-sm font-medium text-gray-700">Waktu & Tanggal Baru</label>
+                    <input type="datetime-local" id="correctedTime" name="correctedTime" required 
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeCorrectionModal()" 
+                            class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition duration-150">
+                        Batal
+                    </button>
+                    <button type="submit" id="submitCorrectionButton"
+                            class="px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150">
+                        Simpan Koreksi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // PASTIKAN ANDA MENGGANTI INI DENGAN URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbynXPp79NIAO90HpGdakAxPWiduz4Z6rHlqgJ0Qyg9JDOBezPnjewZiCvuqwgiITqxc/exec";
+        const RECAP_FUNCTION_URL = APPS_SCRIPT_URL + "?function=generateRekapitulasi";
+
+        // =========================================================
+        // UTILITAS UI
+        // =========================================================
+
+        /** Menampilkan pesan notifikasi ke pengguna */
+        function showMessage(type, message) {
+            const box = document.getElementById('messageBox');
+            const icon = document.getElementById('messageIcon');
+            const text = document.getElementById('messageText');
+            
+            // Atur kelas dan ikon berdasarkan tipe
+            let bgColor, iconSvg;
+            if (type === 'success') {
+                bgColor = 'bg-green-100 border border-green-400 text-green-700';
+                iconSvg = lucide.createIcons()['check-circle'].toSvg({ class: 'w-5 h-5' });
+            } else if (type === 'error') {
+                bgColor = 'bg-red-100 border border-red-400 text-red-700';
+                iconSvg = lucide.createIcons()['alert-triangle'].toSvg({ class: 'w-5 h-5' });
+            } else { // info / loading
+                bgColor = 'bg-blue-100 border border-blue-400 text-blue-700';
+                iconSvg = lucide.createIcons()['info'].toSvg({ class: 'w-5 h-5' });
+            }
+
+            box.className = `p-3 mb-4 rounded-lg flex items-center ${bgColor}`;
+            icon.innerHTML = iconSvg;
+            text.textContent = message;
+            box.classList.remove('hidden');
+
+            // Sembunyikan pesan setelah 5 detik (hanya untuk success/error)
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    box.classList.add('hidden');
+                }, 5000);
+            }
+        }
+        
+        /** Mengontrol overlay loading */
+        function toggleLoading(show, message = "Memproses...") {
+            const overlay = document.getElementById('loadingOverlay');
+            const msg = document.getElementById('loadingMessage');
+            if (show) {
+                msg.textContent = message;
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        // =========================================================
+        // 1. LOGIKA REGISTRASI PEGAWAI
+        // =========================================================
+
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const uid = document.getElementById('uid').value.trim().toUpperCase();
+            const nama = document.getElementById('nama').value.trim();
+            const divisi = document.getElementById('divisi').value.trim();
+            
+            if (!uid || !nama || !divisi) {
+                showMessage('error', 'Semua field pendaftaran harus diisi.');
+                return;
+            }
+            
+            toggleLoading(true, "Mendaftarkan pegawai...");
+            
+            const formData = new URLSearchParams();
+            formData.append('mode', 'REGISTER_EMPLOYEE');
+            formData.append('uid', uid);
+            formData.append('nama', nama);
+            formData.append('divisi', divisi);
+            formData.append('status_kerja', 'Aktif');
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                const result = await response.text();
+                
+                if (result.includes("REGISTRATION_SUCCESS")) {
+                    showMessage('success', `Pegawai ${nama} (UID: ${uid}) berhasil didaftarkan.`);
+                    document.getElementById('registrationForm').reset();
+                } else {
+                    showMessage('error', 'Pendaftaran gagal: ' + result.replace('ERROR:', '').trim());
+                }
+
+            } catch (error) {
+                showMessage('error', 'Terjadi kesalahan jaringan saat mendaftar: ' + error.message);
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // =========================================================
+        // 2. LOGIKA MONITORING LOG PRESENSI
+        // =========================================================
+
+        /** Mengubah timestamp menjadi format tanggal dan waktu yang mudah dibaca */
+        function formatTimestamp(ms) {
+            const date = new Date(ms);
+            const options = { 
+                year: 'numeric', month: 'short', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit', second: '2-digit', 
+                hour12: false 
+            };
+            return date.toLocaleString('id-ID', options);
+        }
+
+        /** Mengambil dan menampilkan data presensi terbaru */
+        async function fetchData() {
+            toggleLoading(true, "Memuat log presensi terbaru...");
+            const tableBody = document.getElementById('logTableBody');
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-gray-500">Memuat data log presensi...</td></tr>`;
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, { method: 'GET' });
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-gray-500">Belum ada data presensi yang tercatat.</td></tr>`;
+                    return;
+                }
+
+                // Ambil 10 data terbaru (sudah diurutkan terbalik di Apps Script)
+                const latestData = data.slice(0, 10); 
+                tableBody.innerHTML = ''; 
+
+                latestData.forEach(item => {
+                    let badgeClass;
+                    let actionClass;
+                    let actionText = item.action.includes('Check-In') ? 'MASUK' : 'KELUAR';
+                    
+                    if (actionText === 'MASUK') {
+                        actionClass = 'bg-blue-100 text-blue-800';
+                    } else {
+                        actionClass = 'bg-yellow-100 text-yellow-800';
+                    }
+
+                    if (item.status_log === 'Terkoreksi') {
+                        badgeClass = 'bg-red-100 text-red-800';
+                    } else if (item.status_log === 'Tertunda Koreksi') {
+                        badgeClass = 'bg-orange-100 text-orange-800';
+                    } else {
+                        badgeClass = 'bg-green-100 text-green-800';
+                    }
+                    
+                    // Tombol Koreksi hanya muncul jika Status Log bukan 'Terkoreksi'
+                    const correctionButton = item.status_log !== 'Terkoreksi' ? `
+                        <button onclick="openCorrectionModal('${item.id}', ${item.timestamp})" 
+                                class="text-xs font-medium text-red-600 hover:text-red-800 transition duration-150">
+                            Koreksi
+                        </button>
+                    ` : `<span class="text-xs text-gray-400">N/A</span>`;
+
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${formatTimestamp(item.timestamp)}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${actionClass}">
+                                    ${actionText}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">${item.divisi}</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500">${item.uid}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}">
+                                    ${item.status_log}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-400">${item.id}</td>
+                            <td class="px-3 py-2 whitespace-nowrap">${correctionButton}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+
+            } catch (error) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">Error memuat data: ${error.message}. Pastikan URL Web App sudah benar.</td></tr>`;
+                showMessage('error', 'Gagal memuat log presensi. Cek console untuk detail error.');
+                console.error("Fetch Data Error:", error);
+            } finally {
+                toggleLoading(false);
+                // Pastikan Lucide icons di-render ulang setelah konten diubah
+                lucide.createIcons();
+            }
+        }
+
+        // =========================================================
+        // 3. LOGIKA KOREKSI WAKTU
+        // =========================================================
+
+        /** Membuka modal koreksi dan mengisi data awal */
+        function openCorrectionModal(transactionId, timestamp) {
+            const modal = document.getElementById('correctionModal');
+            const idInput = document.getElementById('correctionId');
+            const idDisplay = document.getElementById('modalTransactionId');
+            const timeInput = document.getElementById('correctedTime');
+
+            // Format timestamp (ms) ke string YYYY-MM-DDTHH:MM
+            const date = new Date(timestamp);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const currentDateTime = `${y}-${m}-${d}T${h}:${min}`;
+
+            idInput.value = transactionId;
+            idDisplay.textContent = transactionId;
+            timeInput.value = currentDateTime;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        /** Menutup modal koreksi */
+        function closeCorrectionModal() {
+            document.getElementById('correctionModal').classList.add('hidden');
+            document.getElementById('correctionModal').classList.remove('flex');
+        }
+
+        document.getElementById('correctionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('correctionId').value;
+            const waktu_koreksi = document.getElementById('correctedTime').value;
+            
+            if (!id || !waktu_koreksi) {
+                showMessage('error', 'Waktu koreksi tidak valid.');
+                return;
+            }
+            
+            closeCorrectionModal();
+            toggleLoading(true, `Mengirim koreksi untuk ID ${id}...`);
+
+            const formData = new URLSearchParams();
+            formData.append('mode', 'KOREKSI_WAKTU');
+            formData.append('id', id);
+            // Kirim waktu dalam format ISO (termasuk timezone jika memungkinkan, tapi datetime-local cukup)
+            formData.append('waktu_koreksi', new Date(waktu_koreksi).toISOString()); 
+
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                const result = await response.text();
+                
+                if (result.includes("KOREKSI_SUCCESS")) {
+                    showMessage('success', `Koreksi berhasil untuk ID Transaksi: ${id}.`);
+                    fetchData(); // Muat ulang data setelah koreksi
+                } else {
+                    showMessage('error', 'Koreksi gagal: ' + result.replace('ERROR:', '').trim());
+                }
+
+            } catch (error) {
+                showMessage('error', 'Terjadi kesalahan jaringan saat mengoreksi: ' + error.message);
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // =========================================================
+        // 4. LOGIKA HITUNG REKAPITULASI
+        // =========================================================
+
+        async function triggerRecapitulasi() {
+            const confirmation = confirm("Anda yakin ingin menghitung rekapitulasi harian? Proses ini akan menimpa data di sheet 'Rekapitulasi Harian'.");
+            if (!confirmation) return;
+
+            toggleLoading(true, "Menghitung rekapitulasi total jam kerja...");
+            
+            try {
+                // Panggil Apps Script dengan parameter function
+                const response = await fetch(RECAP_FUNCTION_URL, {
+                    method: 'GET' // Menggunakan GET karena ini adalah panggilan fungsi langsung
+                });
+                
+                const result = await response.text();
+                
+                // Cek pesan sukses dari Apps Script (walaupun ini akan memanggil alert di sisi GAS)
+                if (result.includes("Gagal menjalankan rekapitulasi")) {
+                    showMessage('error', 'Perhitungan Rekapitulasi gagal: Cek log Google Apps Script.');
+                } else {
+                    showMessage('info', 'Perhitungan Rekapitulasi Harian Selesai! Cek sheet "Rekapitulasi Harian" di Spreadsheet Anda.');
+                }
+
+            } catch (error) {
+                showMessage('error', 'Terjadi kesalahan jaringan saat memicu rekapitulasi: ' + error.message);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+        
+        // =========================================================
+        // INITIATION
+        // =========================================================
+
+        window.onload = function() {
+            // Inisialisasi Lucide icons
+            lucide.createIcons();
+            // Muat data presensi saat halaman dimuat
+            fetchData();
+            // Set interval untuk memuat data setiap 10 detik agar real-time
+            setInterval(fetchData, 10000); 
+        };
+
+    </script>
+</body>
+</html>
