@@ -19,7 +19,7 @@
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            /* URL WEB APP GAS YANG DIBERIKAN USER */
+            /* URL GAMBAR DARI USER */
             background-image: url('./sppg.png'); 
             
             /* Overlay Gelap untuk kontras teks putih */
@@ -141,6 +141,7 @@
             <div id="error-message-realtime" class="hidden bg-red-700/50 border border-red-400 text-white px-4 py-3 rounded-lg text-sm" role="alert">
                 <strong class="font-bold">Error!</strong>
                 <span id="error-text-realtime" class="block sm:inline"></span>
+                <p class="text-xs mt-1">Ini sering terjadi karena CORS atau Apps Script belum di-deploy dengan akses 'Anyone'. Cek konsol browser untuk info lebih lanjut.</p>
             </div>
         </div>
 
@@ -188,7 +189,6 @@
 
     <script>
         // =========================================================================
-        // !!! PERHATIAN PENTING !!!
         // URL WEB APP GOOGLE APPS SCRIPT DARI USER
         // =========================================================================
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxdwvjEoFPCjTD9StVy2ue5x7Bmkku9Mja4Hbr7uufvBlHLr1-VEn0eTA-DCPnxIn28/exec"; 
@@ -279,7 +279,9 @@
          * Memanggil Apps Script API untuk log realtime.
          */
         async function fetchLogs() {
-            // Cek sederhana untuk memastikan URL sudah diisi
+            // DEBUGGING: Tampilkan URL di konsol untuk verifikasi
+            console.log("Mencoba mengambil data dari URL:", GAS_WEB_APP_URL);
+            
             if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("[GANTI")) {
                 errorTextRealtime.textContent = "URL API Web App Apps Script belum valid.";
                 errorRealtime.classList.remove('hidden');
@@ -294,6 +296,9 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    // Gunakan 'no-cors' sebagai percobaan kedua jika 'cors' gagal 
+                    // namun ini akan membuat response tidak bisa dibaca (data akan kosong)
+                    // Kita kembalikan ke 'cors' yang diperlukan untuk membaca JSON
                     mode: 'cors', 
                     headers: {
                         'Content-Type': 'application/json',
@@ -302,7 +307,14 @@
                         mode: 'GET_LOGS_API' 
                     })
                 });
+                
+                // Pastikan status response OK (200)
+                if (!response.ok) {
+                    throw new Error(`Permintaan gagal dengan status ${response.status}.`);
+                }
 
+                // Coba parse response. Jika response kosong (bisa jadi karena masalah CORS
+                // yang tidak terdeteksi oleh browser), .json() akan gagal.
                 const data = await response.json();
 
                 if (data.error) {
@@ -313,7 +325,7 @@
 
             } catch (error) {
                 console.error('Fetch Realtime Error:', error);
-                errorTextRealtime.textContent = 'Gagal memuat log realtime. Pastikan URL Web App sudah benar dan di-deploy ulang. Detail: ' + error.message;
+                errorTextRealtime.textContent = 'Gagal memuat log realtime. Pastikan URL Web App sudah benar dan di-deploy ulang dengan akses "Anyone". Detail: ' + error.message;
                 errorRealtime.classList.remove('hidden');
             } finally {
                 loadingRealtime.classList.add('hidden');
@@ -367,7 +379,9 @@
          * Memanggil Apps Script API untuk rekapitulasi.
          */
         async function fetchRekap() {
-            // Cek sederhana untuk memastikan URL sudah diisi
+            // DEBUGGING: Tampilkan URL di konsol untuk verifikasi
+            console.log("Mencoba mengambil rekap dari URL:", GAS_WEB_APP_URL);
+            
             if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("[GANTI")) {
                 errorTextRekap.textContent = "URL API Web App Apps Script belum valid.";
                 errorRekap.classList.remove('hidden');
@@ -404,6 +418,10 @@
                     })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`Permintaan gagal dengan status ${response.status}.`);
+                }
+                
                 const data = await response.json();
 
                 if (data.error) {
