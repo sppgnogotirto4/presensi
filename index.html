@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Presensi | Elegan & Glass</title>
+    <title>Dashboard Presensi | Sppg Nogotirto</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons untuk estetika modern -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -20,7 +20,7 @@
             background-position: center;
             background-attachment: fixed;
             /* Placeholder: Ganti dengan URL foto Anda yang beresolusi tinggi di GitHub Pages */
-            background-image: url('https://placehold.co/1920x1080/000000/FFFFFF/png?text=Latar+Belakang+Elegan+Anda');
+            background-image: url('sppg.png');
             
             /* Overlay Gelap untuk kontras teks putih */
             position: relative;
@@ -120,7 +120,7 @@
         <div id="page-realtime" class="glass-card p-6 md:p-8 space-y-6">
             <h2 class="text-2xl font-bold border-b border-white/20 pb-2">Log Presensi Terbaru</h2>
             <div id="realtime-header" class="flex justify-between items-center">
-                <p class="text-sm text-gray-300">Memuat log otomatis setiap 5 detik.</p>
+                <p class="text-sm text-gray-300">Muat ulang secara manual untuk mendapatkan log terbaru.</p>
                 <button onclick="fetchLogs()" class="nav-btn bg-white/30 hover:bg-white/40 flex items-center">
                     <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i> Refresh
                 </button>
@@ -207,7 +207,8 @@
         const endDateInput = document.getElementById('endDate');
         const nameFilterInput = document.getElementById('nameFilter');
         
-        let intervalId; // Untuk menyimpan ID interval refresh
+        // Variabel interval dihapus atau diset null secara permanen.
+        let intervalId = null; 
 
         // Inisialisasi Lucide Icons
         document.addEventListener('DOMContentLoaded', () => {
@@ -216,7 +217,7 @@
             const today = new Date().toISOString().split('T')[0];
             startDateInput.value = today;
             endDateInput.value = today;
-            fetchLogs(); // Muat data realtime pertama kali
+            fetchLogs(); // Muat data realtime pertama kali saat DOM siap
         });
 
         // ===============================================
@@ -232,15 +233,22 @@
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
             document.getElementById(`nav-${pageId}`).classList.add('active');
 
-            // Kontrol interval refresh
+            // Kontrol: Refresh hanya dilakukan ketika beralih ke Realtime Log
             if (pageId === 'realtime') {
-                if (!intervalId) {
-                    intervalId = setInterval(fetchLogs, 5000); 
+                // Pastikan interval dihentikan (untuk jaga-jaga)
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
                 }
+                // Ambil data segera saat kembali ke halaman ini (Manual Refresh)
+                fetchLogs(); 
             } else {
-                clearInterval(intervalId);
-                intervalId = null;
-                // Muat rekap jika belum ada data
+                // Pastikan interval dihentikan (saat pindah ke Rekap)
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+                // Muat rekap jika belum ada data atau ketika tombol filter diklik
                 if (rekapContainer.innerHTML === '') {
                     fetchRekap(); 
                 }
@@ -276,7 +284,6 @@
                 errorTextRealtime.textContent = "URL API belum diatur. Mohon ganti placeholder di kode JavaScript.";
                 errorRealtime.classList.remove('hidden');
                 loadingRealtime.classList.add('hidden');
-                clearInterval(intervalId); // Hentikan refresh
                 return;
             }
 
