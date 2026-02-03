@@ -1,501 +1,83 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Presensi | SPPG Nogotirto</title>
+    <title>Login | Monitoring Presensi SPPG</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons untuk estetika modern -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;800&display=swap');
-        
         body {
-            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
             min-height: 100vh;
             display: flex;
-            align-items: flex-start; /* Menggunakan flex-start agar konten bisa discroll */
+            align-items: center;
             justify-content: center;
-            padding: 30px 15px;
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            /* URL GAMBAR DARI USER */
-            background-image: url('./sppg.png'); 
-            
-            /* Overlay Gelap untuk kontras teks putih */
-            position: relative;
         }
-
-        /* Glassmorphism Effect */
-        .glass-container {
-            position: relative;
-            z-index: 10;
-        }
-
         .glass-card {
-            background: rgba(255, 255, 255, 0.1); 
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2); 
-            backdrop-filter: blur(15px) saturate(150%); /* Blur lebih halus */
-            -webkit-backdrop-filter: blur(15px) saturate(150%);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.15); 
-            color: white;
-            transition: all 0.3s ease-in-out;
-        }
-        
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 6px 40px rgba(0, 0, 0, 0.3); 
-        }
-
-        /* Warna khusus untuk Check-In/Out di Glassmorphism */
-        .checkin-tag {
-            background: rgba(52, 211, 153, 0.3); /* Green */
-            border: 1px solid rgba(52, 211, 153, 0.5);
-            color: #d1fae5; /* Text Green Light */
-            padding: 4px 10px;
-            border-radius: 9999px;
-            font-weight: 600;
-        }
-        .checkout-tag {
-            background: rgba(99, 102, 241, 0.3); /* Indigo */
-            border: 1px solid rgba(99, 102, 241, 0.5);
-            color: #e0e7ff; /* Text Indigo Light */
-            padding: 4px 10px;
-            border-radius: 9999px;
-            font-weight: 600;
-        }
-
-        /* Navigasi */
-        .nav-btn {
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 600;
-            color: white;
-            transition: background 0.2s;
-        }
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        .nav-btn.active {
-            background: white;
-            color: #1e3a8a; /* Dark Blue */
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Overlay pada body */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4); /* Gelap sedikit, pertahankan kontras */
-            z-index: 5;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="max-w-5xl w-full glass-container">
-        
-        <!-- Header & Navigasi -->
-        <header class="mb-8 p-4 glass-card shadow-lg">
-            <h1 class="text-3xl font-extrabold tracking-tight">Dashboard Presensi SPPG Nogotirto</h1>
-            <p class="text-sm text-gray-300">Data Realtime dari Google Apps Script</p>
-            
-            <div class="flex space-x-4 mt-4">
-                <button id="nav-realtime" onclick="showPage('realtime')" class="nav-btn active flex items-center">
-                    <i data-lucide="zap" class="w-4 h-4 mr-1"></i> Realtime Log
-                </button>
-                <button id="nav-rekap" onclick="showPage('rekap')" class="nav-btn flex items-center">
-                    <i data-lucide="clock" class="w-4 h-4 mr-1"></i> Rekapitulasi Harian
-                </button>
-            </div>
-        </header>
 
-        <!-- Container Halaman -->
-        <div id="page-realtime" class="glass-card p-6 md:p-8 space-y-6">
-            <h2 class="text-2xl font-bold border-b border-white/20 pb-2">Log Presensi Terbaru</h2>
-            <div id="realtime-header" class="flex justify-between items-center">
-                <p class="text-sm text-gray-300">Muat ulang secara manual untuk mendapatkan log terbaru.</p>
-                <button onclick="fetchLogs()" class="nav-btn bg-white/30 hover:bg-white/40 flex items-center">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-1"></i> Refresh
-                </button>
-            </div>
-
-            <div id="loading-realtime" class="text-center py-12">
-                <svg class="animate-spin h-8 w-8 text-white mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="font-semibold">Mengambil data...</p>
-            </div>
-            
-            <div id="log-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <!-- Log data akan dimasukkan di sini -->
-            </div>
-
-            <div id="error-message-realtime" class="hidden bg-red-700/50 border border-red-400 text-white px-4 py-3 rounded-lg text-sm" role="alert">
-                <strong class="font-bold">Error!</strong>
-                <span id="error-text-realtime" class="block sm:inline"></span>
-                <p class="text-xs mt-1">Ini sering terjadi karena CORS atau Apps Script belum di-deploy dengan akses 'Anyone'. Cek konsol browser untuk info lebih lanjut.</p>
-            </div>
+    <div class="glass-card p-8 rounded-3xl shadow-2xl w-full max-w-md text-center border border-gray-100">
+        <div class="flex justify-center items-center gap-6 mb-8">
+            <img src="logo-unu.png" alt="Logo UNU" class="h-16 object-contain">
+            <div class="h-10 w-px bg-gray-300"></div>
+            <img src="logo-bgn.png" alt="Logo BGN" class="h-16 object-contain">
         </div>
 
-        <!-- REKAPITULASI PAGE -->
-        <div id="page-rekap" class="glass-card p-6 md:p-8 space-y-6 hidden">
-            <h2 class="text-2xl font-bold border-b border-white/20 pb-2">Rekapitulasi Jam Kerja Harian</h2>
+        <h1 class="text-xl font-extrabold text-gray-800 mb-2">SPPG NOGOTIRTO</h1>
+        <p class="text-gray-500 text-sm mb-8 italic">"Sinergi UNU Yogyakarta & Badan Gizi Nasional untuk Indonesia Sehat"</p>
+
+        <div class="space-y-4">
+            <div class="relative text-left">
+                <label class="text-xs font-bold text-gray-400 uppercase ml-1">Kata Sandi Akses</label>
+                <div class="relative mt-1">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" id="passInput" 
+                        class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-500 transition" 
+                        placeholder="Masukkan sandi...">
+                </div>
+            </div>
+
+            <button onclick="checkLogin()" 
+                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-2xl shadow-lg transform transition active:scale-95">
+                BUKA DASHBOARD
+            </button>
             
-            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 items-end">
-                <div class="w-full md:w-1/4">
-                    <label for="startDate" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Awal</label>
-                    <input type="date" id="startDate" class="w-full p-2 rounded glass-card text-white bg-white/20 focus:ring-2 focus:ring-white/50 border-transparent focus:border-transparent">
-                </div>
-                <div class="w-full md:w-1/4">
-                    <label for="endDate" class="block text-sm font-medium text-gray-300 mb-1">Tanggal Akhir</label>
-                    <input type="date" id="endDate" class="w-full p-2 rounded glass-card text-white bg-white/20 focus:ring-2 focus:ring-white/50 border-transparent focus:border-transparent">
-                </div>
-                <div class="w-full md:w-1/4">
-                    <label for="nameFilter" class="block text-sm font-medium text-gray-300 mb-1">Filter Nama</label>
-                    <input type="text" id="nameFilter" placeholder="Cari nama pegawai..." class="w-full p-2 rounded glass-card text-white bg-white/20 focus:ring-2 focus:ring-white/50 border-transparent focus:border-transparent">
-                </div>
-                <button onclick="fetchRekap()" class="nav-btn bg-white/40 hover:bg-white/50 w-full md:w-auto flex items-center justify-center">
-                    <i data-lucide="search" class="w-4 h-4 mr-1"></i> Cari Rekap
-                </button>
-            </div>
-
-            <div id="loading-rekap" class="text-center py-12 hidden">
-                <svg class="animate-spin h-8 w-8 text-white mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="font-semibold">Memproses rekapitulasi...</p>
-            </div>
-
-            <div id="rekap-container" class="space-y-4">
-                <!-- Rekap data akan dimasukkan di sini -->
-            </div>
-
-            <div id="error-message-rekap" class="hidden bg-red-700/50 border border-red-400 text-white px-4 py-3 rounded-lg text-sm" role="alert">
-                <strong class="font-bold">Error Rekap!</strong>
-                <span id="error-text-rekap" class="block sm:inline"></span>
-            </div>
+            <p id="errorMsg" class="text-red-500 text-xs mt-2 hidden">Kata sandi salah, silakan coba lagi.</p>
         </div>
-
     </div>
 
     <script>
-        // =========================================================================
-        // URL WEB APP GOOGLE APPS SCRIPT DARI USER
-        // =========================================================================
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxdwvjEoFPCjTD9StVy2ue5x7Bmkku9Mja4Hbr7uufvBlHLr1-VEn0eTA-DCPnxIn28/exec"; 
-        
-        // Elemen DOM
-        const logContainer = document.getElementById('log-container');
-        const loadingRealtime = document.getElementById('loading-realtime');
-        const errorRealtime = document.getElementById('error-message-realtime');
-        const errorTextRealtime = document.getElementById('error-text-realtime');
+        // GANTI URL DI BAWAH INI DENGAN URL DEPLOY GOOGLE APPS SCRIPT KAMU
+        const DASHBOARD_URL = "URL_APPS_SCRIPT_KAMU_DISINI";
+        const SECRET_PASS = "ri170845";
 
-        const rekapContainer = document.getElementById('rekap-container');
-        const loadingRekap = document.getElementById('loading-rekap');
-        const errorRekap = document.getElementById('error-message-rekap');
-        const errorTextRekap = document.getElementById('error-text-rekap');
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        const nameFilterInput = document.getElementById('nameFilter');
-        
-        // Variabel interval dinonaktifkan untuk menghemat kuota API (refresh manual)
-        let intervalId = null; 
+        function checkLogin() {
+            const input = document.getElementById('passInput').value;
+            const error = document.getElementById('errorMsg');
 
-        // Inisialisasi Lucide Icons
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            // Set tanggal default untuk rekap
-            const today = new Date().toISOString().split('T')[0];
-            startDateInput.value = today;
-            endDateInput.value = today;
-            fetchLogs(); // Muat data realtime pertama kali saat DOM siap
-        });
-
-        // ===============================================
-        // FUNGSI NAVIGASI
-        // ===============================================
-
-        function showPage(pageId) {
-            document.getElementById('page-realtime').classList.add('hidden');
-            document.getElementById('page-rekap').classList.add('hidden');
-            document.getElementById('nav-realtime').classList.remove('active');
-            document.getElementById('nav-rekap').classList.remove('active');
-
-            document.getElementById(`page-${pageId}`).classList.remove('hidden');
-            document.getElementById(`nav-${pageId}`).classList.add('active');
-
-            // Kontrol: Refresh hanya dilakukan ketika beralih ke Realtime Log
-            if (pageId === 'realtime') {
-                if (intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                }
-                // Ambil data segera saat kembali ke halaman ini (Manual Refresh)
-                fetchLogs(); 
+            if (input === SECRET_PASS) {
+                window.location.href = DASHBOARD_URL;
             } else {
-                if (intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                }
-                // Muat rekap jika belum ada data atau ketika tombol filter diklik
-                if (rekapContainer.innerHTML === '') {
-                    // Coba ambil rekap dengan filter default (hari ini)
-                    fetchRekap(); 
-                }
-            }
-        }
-        
-        // ===============================================
-        // FUNGSI REALTIME LOG (DASHBOARD)
-        // ===============================================
-
-        /**
-         * Mengubah timestamp (milidetik) menjadi string waktu lokal yang mudah dibaca.
-         */
-        function formatTime(timestamp) {
-            const date = new Date(timestamp);
-            const options = { 
-                day: 'numeric', 
-                month: 'short', 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit', 
-                hour12: false,
-                timeZone: 'Asia/Jakarta' 
-            };
-            return date.toLocaleTimeString('id-ID', options);
-        }
-        
-        /**
-         * Memanggil Apps Script API untuk log realtime.
-         */
-        async function fetchLogs() {
-            // DEBUGGING: Tampilkan URL di konsol untuk verifikasi
-            console.log("Mencoba mengambil data dari URL:", GAS_WEB_APP_URL);
-            
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("[GANTI")) {
-                errorTextRealtime.textContent = "URL API Web App Apps Script belum valid.";
-                errorRealtime.classList.remove('hidden');
-                loadingRealtime.classList.add('hidden');
-                return;
-            }
-
-            loadingRealtime.classList.remove('hidden');
-            logContainer.classList.add('hidden');
-            errorRealtime.classList.add('hidden');
-
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    // Gunakan 'no-cors' sebagai percobaan kedua jika 'cors' gagal 
-                    // namun ini akan membuat response tidak bisa dibaca (data akan kosong)
-                    // Kita kembalikan ke 'cors' yang diperlukan untuk membaca JSON
-                    mode: 'cors', 
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        mode: 'GET_LOGS_API' 
-                    })
-                });
-                
-                // Pastikan status response OK (200)
-                if (!response.ok) {
-                    throw new Error(`Permintaan gagal dengan status ${response.status}.`);
-                }
-
-                // Coba parse response. Jika response kosong (bisa jadi karena masalah CORS
-                // yang tidak terdeteksi oleh browser), .json() akan gagal.
-                const data = await response.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                renderLogs(data);
-
-            } catch (error) {
-                console.error('Fetch Realtime Error:', error);
-                errorTextRealtime.textContent = 'Gagal memuat log realtime. Pastikan URL Web App sudah benar dan di-deploy ulang dengan akses "Anyone". Detail: ' + error.message;
-                errorRealtime.classList.remove('hidden');
-            } finally {
-                loadingRealtime.classList.add('hidden');
+                error.classList.remove('hidden');
+                document.getElementById('passInput').value = "";
             }
         }
 
-        /**
-         * Merender data log ke dalam tampilan Glassmorphism.
-         */
-        function renderLogs(logs) {
-            logContainer.innerHTML = '';
-            if (logs.length === 0) {
-                logContainer.innerHTML = '<p class="text-center text-gray-200 py-8 text-lg glass-card">Belum ada data presensi yang tercatat.</p>';
+        // Jalankan login saat tekan tombol Enter
+        document.getElementById('passInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkLogin();
             }
-
-            logs.forEach(log => {
-                const actionClass = log.action === 'Check-In' ? 'checkin-tag' : 
-                                  (log.action === 'Check-Out' ? 'checkout-tag' : 'bg-gray-700/50 text-gray-200');
-                
-                const icon = log.action === 'Check-In' ? `<i data-lucide="log-in" class="w-5 h-5"></i>` : 
-                             (log.action === 'Check-Out' ? `<i data-lucide="log-out" class="w-5 h-5"></i>` : `<i data-lucide="alert-triangle" class="w-5 h-5"></i>`);
-
-                const logItem = `
-                    <div class="glass-card p-4 flex flex-col space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="${actionClass} text-xs uppercase">${log.action}</span>
-                            <span class="text-sm font-medium text-gray-300">${formatTime(log.timestamp)}</span>
-                        </div>
-                        
-                        <p class="font-extrabold text-xl truncate">${log.name}</p>
-                        <p class="text-sm text-gray-300">${log.divisi}</p>
-
-                        <div class="flex justify-between items-center pt-2 border-t border-white/10">
-                            <span class="text-xs text-gray-400 truncate">${log.uid}</span>
-                            ${icon}
-                        </div>
-                    </div>
-                `;
-                logContainer.innerHTML += logItem;
-            });
-
-            lucide.createIcons(); // Render icons baru
-            logContainer.classList.remove('hidden');
-        }
-
-        // ===============================================
-        // FUNGSI REKAPITULASI HARIAN
-        // ===============================================
-
-        /**
-         * Memanggil Apps Script API untuk rekapitulasi.
-         */
-        async function fetchRekap() {
-            // DEBUGGING: Tampilkan URL di konsol untuk verifikasi
-            console.log("Mencoba mengambil rekap dari URL:", GAS_WEB_APP_URL);
-            
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("[GANTI")) {
-                errorTextRekap.textContent = "URL API Web App Apps Script belum valid.";
-                errorRekap.classList.remove('hidden');
-                loadingRekap.classList.add('hidden');
-                return;
-            }
-
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-            const nameFilter = nameFilterInput.value;
-
-            if (!startDate || !endDate) {
-                errorTextRekap.textContent = "Tanggal Awal dan Akhir wajib diisi.";
-                errorRekap.classList.remove('hidden');
-                return;
-            }
-
-            loadingRekap.classList.remove('hidden');
-            rekapContainer.innerHTML = '';
-            errorRekap.classList.add('hidden');
-
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    mode: 'cors', 
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        mode: 'GET_REKAP_API',
-                        startDate: startDate,
-                        endDate: endDate,
-                        nameFilter: nameFilter
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Permintaan gagal dengan status ${response.status}.`);
-                }
-                
-                const data = await response.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                renderRekap(data);
-
-            } catch (error) {
-                console.error('Fetch Rekap Error:', error);
-                errorTextRekap.textContent = 'Gagal memuat rekapitulasi. Pastikan URL Web App sudah benar. Detail: ' + error.message;
-                errorRekap.classList.remove('hidden');
-            } finally {
-                loadingRekap.classList.add('hidden');
-            }
-        }
-
-        /**
-         * Merender data rekapitulasi.
-         */
-        function renderRekap(rekapData) {
-            rekapContainer.innerHTML = '';
-
-            if (rekapData.length === 0) {
-                rekapContainer.innerHTML = '<p class="text-center text-gray-200 py-8 text-lg glass-card">Tidak ada data yang cocok dengan filter tanggal/nama.</p>';
-                return;
-            }
-
-            let html = `
-                <div class="space-y-6">
-            `;
-
-            rekapData.forEach(person => {
-                // Card utama untuk total rekap
-                html += `
-                    <div class="glass-card p-5">
-                        <div class="flex justify-between items-center border-b border-white/20 pb-3 mb-3">
-                            <div>
-                                <h3 class="text-xl font-extrabold">${person.name} <span class="text-sm text-gray-300 ml-2">(${person.divisi})</span></h3>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm text-gray-300">Total Jam Kerja:</p>
-                                <p class="text-2xl font-bold text-green-300">${person.totalDurationFormatted}</p>
-                            </div>
-                        </div>
-
-                        <details class="text-gray-200 cursor-pointer">
-                            <summary class="font-semibold text-white hover:text-green-300 transition duration-150">Lihat Detail Harian (${person.records.length} Hari)</summary>
-                            
-                            <div class="mt-4 space-y-3">
-                                ${person.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map(record => `
-                                    <div class="glass-card p-3 text-sm flex justify-between items-center bg-white/10">
-                                        <div class="flex-1">
-                                            <p class="font-medium">${record.date}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p>Masuk: <span class="font-bold text-green-300">${record.checkIn}</span></p>
-                                            <p>Keluar: <span class="font-bold text-red-300">${record.checkOut}</span></p>
-                                            <p class="mt-1">Durasi: <span class="font-bold text-yellow-300">${record.durationFormatted}</span></p>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </details>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-            rekapContainer.innerHTML = html;
-        }
-
-        // Set Navigasi Awal ke Dashboard Realtime
-        showPage('realtime');
+        });
     </script>
 </body>
 </html>
